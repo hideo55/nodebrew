@@ -1,5 +1,7 @@
 # nodebrew-completion
 
+_nodebrew_cache_expire_time=0
+
 _nodebrew()
 {
     local opts cur prev
@@ -22,9 +24,25 @@ _nodebrew()
                 COMPREPLY=( $(compgen -W "${target}" ${cur} ) )
             ;;
             install)
-                local _remote_versions
-                _remote_versions=$(nodebrew ls-remote 2> /dev/null)
-                COMPREPLY=( $(compgen -W "${_remote_versions}" ${cur} ) )
+                local ttl cur_time
+                ttl=${NODEBREW_COMPLETION_CACHE_TTL}
+                if [ -z "$ttl" ] || [ "$ttl" != `expr "$ttl" : '\([0-9][0-9]*\)'` ]; then
+                    #Default Cache TTL
+                    ttl=3600
+                fi
+                cur_time=$(date +%s)
+                
+                if [[ ${_nodebrew_cache_expire_time} < ${cur_time} ]]; then
+                    # cache expire
+                    _nodebrew_remote_versions=""
+                fi
+
+                if [ -z "${_nodebrew_remote_versions}" ]; then
+                    _nodebrew_remote_versions=$(nodebrew ls-remote 2> /dev/null)
+                    _nodebrew_cache_expire_time=`expr $(date +%s) + ${ttl}`
+                fi
+                
+                COMPREPLY=( $(compgen -W "${_nodebrew_remote_versions}" ${cur} ) )
             ;;
             clean)
                 _versions="${_versions} all"
